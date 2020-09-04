@@ -259,4 +259,4 @@ end
 
 let t_of_js : Ojs.t -> t = Obj.magic
 
-let js_of_t : t -> Ojs.t = Obj.magic
+let t_to_js : t -> Ojs.t = Obj.magic
