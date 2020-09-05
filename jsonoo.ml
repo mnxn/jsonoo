@@ -1,6 +1,6 @@
 open Js_of_ocaml
 
-type t = Js.Unsafe.any
+type t = < > Js.t
 
 let stringify (json : t) =
   json
@@ -232,7 +232,8 @@ module Encode = struct
     |> Js.Unsafe.obj
 
   let object_ (props : (string * t) list) : t =
-    Js.Unsafe.obj (Array.of_list props)
+    let coerce (k, v) = (k, Js.Unsafe.coerce v) in
+    Js.Unsafe.obj (Array.map coerce @@ Array.of_list props)
 
   let array encode a : t =
     let encoded : t array = Array.map encode a in

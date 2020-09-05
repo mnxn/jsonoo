@@ -1,6 +1,6 @@
 open Js_of_ocaml
 
-type t
+type t = private < > Js.t
 
 val stringify : t -> string
 
