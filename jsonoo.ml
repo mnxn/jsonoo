@@ -226,18 +226,6 @@ module Encode = struct
     | None   -> null
     | Some v -> encode v
 
-  let dict encode table : t =
-    let decode_pair (k, v) = (k, Js.Unsafe.coerce (encode v)) in
-    table
-    |> Hashtbl.to_seq
-    |> Array.of_seq
-    |> Array.map decode_pair
-    |> Js.Unsafe.obj
-
-  let object_ (props : (string * t) list) : t =
-    let coerce (k, v) = (k, Js.Unsafe.coerce v) in
-    Js.Unsafe.obj (Array.map coerce @@ Array.of_list props)
-
   let array encode a : t =
     let encoded : t array = Array.map encode a in
     Js.Unsafe.coerce (Js.array encoded)
@@ -259,6 +247,18 @@ module Encode = struct
       [| encode_a a; encode_b b; encode_c c; encode_d d |]
     in
     Js.Unsafe.coerce (Js.array encoded)
+
+  let dict encode table : t =
+    let encode_pair (k, v) = (k, Js.Unsafe.coerce (encode v)) in
+    table
+    |> Hashtbl.to_seq
+    |> Array.of_seq
+    |> Array.map encode_pair
+    |> Js.Unsafe.obj
+
+  let object_ (props : (string * t) list) : t =
+    let coerce (k, v) = (k, Js.Unsafe.coerce v) in
+    Js.Unsafe.obj (Array.map coerce @@ Array.of_list props)
 end
 
 let t_of_js : Ojs.t -> t = Obj.magic

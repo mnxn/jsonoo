@@ -2,62 +2,170 @@ open Webtest.Suite
 open Js_of_ocaml
 open Jsonoo
 
-module Test = struct
-  type types =
-    | Float
-    | Int
-    | String
-    | Null
-    | Array
-    | Object
-    | Bool
-    | Char
-
-  let value =
-    let open Jsonoo.Encode in
-    function
-    | Float  -> float 1.23
-    | Int    -> int 23
-    | String -> string "test"
-    | Null   -> null
-    | Array  -> array id [||]
-    | Object -> object_ []
-    | Bool   -> bool true
-    | Char   -> char 'a'
-
-  let label = function
-    | Float  -> "float"
-    | Int    -> "int"
-    | String -> "string"
-    | Null   -> "null"
-    | Array  -> "array"
-    | Object -> "object"
-    | Bool   -> "bool"
-    | Char   -> "char"
-
-  let throws decode types =
-    let test t =
-      let label = label t ^ " exception not raised" in
-      match ignore (decode (value t)) with
-      | exception Decode_error _ -> assert_true ~label true
-      | _                        -> assert_true ~label false
-    in
-    List.iter test types
-end
-
-let log s =
-  ignore
-  @@ Js_of_ocaml.Js.Unsafe.meth_call
-       Js_of_ocaml.Firebug.console
-       "log"
-       [| Js_of_ocaml.Js.Unsafe.inject s |]
+let equal x y = Jsonoo.stringify x = Jsonoo.stringify y
 
 let test_stringify () =
-  let result = Jsonoo.stringify Jsonoo.Encode.null in
-  assert_equal result "null"
+  assert_equal ~label:"null" "null" @@ Jsonoo.stringify Encode.null
 
-module Decode = struct
+let test_try_parse_opt () =
+  assert_equal ~label:"some" (Some (Encode.int 1))
+  @@ Jsonoo.try_parse_opt {| 1 |};
+  assert_equal ~label:"none" None @@ Jsonoo.try_parse_opt {| [ |}
+
+let test_try_parse_exn () =
+  assert_equal ~label:"no exception" (Encode.int 1)
+  @@ Jsonoo.try_parse_exn {| 1 |};
+  assert_raises
+    ~label:"exception"
+    (Decode_error "Failed to parse JSON string \" [ \"")
+    (fun () -> ignore @@ Jsonoo.try_parse_exn {| [ |})
+
+module TestEncode = struct
+  open Jsonoo.Encode
+
+  let test_id () = assert_equal ~label:"id" ~equal null @@ id null
+
+  let test_null () =
+    assert_equal ~label:"null" ~equal (Obj.magic Js.null : t) @@ null
+
+  let test_bool () =
+    assert_equal ~label:"bool" ~equal (Obj.magic (Js.bool true) : t)
+    @@ bool true
+
+  let test_float () =
+    assert_equal ~label:"float" ~equal (try_parse_exn {| 1.23 |}) @@ float 1.23
+
+  let test_int () =
+    assert_equal ~label:"int" ~equal (try_parse_exn {| 23 |}) @@ int 23
+
+  let test_string () =
+    assert_equal ~label:"string" ~equal (try_parse_exn {| "foo" |})
+    @@ string "foo"
+
+  let test_char () =
+    assert_equal ~label:"char" ~equal (try_parse_exn {| "a" |}) @@ char 'a'
+
+  let test_nullable () =
+    assert_equal ~label:"none" ~equal (try_parse_exn {| null |})
+    @@ nullable string None;
+    assert_equal ~label:"some" ~equal (try_parse_exn {| "success" |})
+    @@ nullable string (Some "success")
+
+  let test_array () =
+    assert_equal ~label:"array int" ~equal (try_parse_exn {| [1, 2, 3] |})
+    @@ array int [| 1; 2; 3 |]
+
+  let test_list () =
+    assert_equal ~label:"list int" ~equal (try_parse_exn {| [1, 2, 3] |})
+    @@ list int [ 1; 2; 3 ]
+
+  let test_pair () =
+    assert_equal ~label:"pair" ~equal (try_parse_exn {| ["hello", 1.2] |})
+    @@ pair string float ("hello", 1.2)
+
+  let test_tuple2 () =
+    assert_equal ~label:"tuple2" ~equal (try_parse_exn {| ["hello", 1.2] |})
+    @@ tuple2 string float ("hello", 1.2)
+
+  let test_tuple3 () =
+    assert_equal ~label:"tuple3" ~equal (try_parse_exn {| ["hello", 1.2, 4] |})
+    @@ tuple3 string float int ("hello", 1.2, 4)
+
+  let test_tuple4 () =
+    assert_equal
+      ~label:"tuple4"
+      ~equal
+      (try_parse_exn {| ["hello", 1.2, 4, true] |})
+    @@ tuple4 string float int bool ("hello", 1.2, 4, true)
+
+  let test_dict () =
+    let equal x y = Jsonoo.stringify x = Jsonoo.stringify y in
+
+    assert_equal ~label:"dict - empty" ~equal (try_parse_exn {| {} |})
+    @@ dict id (Hashtbl.create 0);
+
+    let tbl = Hashtbl.of_seq (List.to_seq [ ("x", int 42) ]) in
+    assert_equal ~label:"dict - simple" ~equal (try_parse_exn {| { "x": 42 } |})
+    @@ dict id tbl
+
+  let test_object () =
+    let equal x y = Jsonoo.stringify x = Jsonoo.stringify y in
+
+    assert_equal ~label:"object - empty" ~equal (try_parse_exn {| {} |})
+    @@ object_ [];
+
+    assert_equal
+      ~label:"object - simple"
+      ~equal
+      (try_parse_exn {| { "x": 42 } |})
+    @@ object_ [ ("x", int 42) ]
+
+  let suite =
+    "Encode"
+    >::: [ "test_id" >:: test_id
+         ; "test_null" >:: test_null
+         ; "test_bool" >:: test_bool
+         ; "test_float" >:: test_float
+         ; "test_int" >:: test_int
+         ; "test_string" >:: test_string
+         ; "test_char" >:: test_char
+         ; "test_nullable" >:: test_nullable
+         ; "test_array" >:: test_array
+         ; "test_list" >:: test_list
+         ; "test_pair" >:: test_pair
+         ; "test_tuple2" >:: test_tuple2
+         ; "test_tuple3" >:: test_tuple3
+         ; "test_tuple4" >:: test_tuple4
+         ; "test_dict" >:: test_dict
+         ; "test_object" >:: test_object
+         ]
+end
+
+module TestDecode = struct
   open Jsonoo.Decode
+
+  module Test = struct
+    type types =
+      | Float
+      | Int
+      | String
+      | Null
+      | Array
+      | Object
+      | Bool
+      | Char
+
+    let value =
+      let open Jsonoo.Encode in
+      function
+      | Float  -> float 1.23
+      | Int    -> int 23
+      | String -> string "test"
+      | Null   -> null
+      | Array  -> array id [||]
+      | Object -> object_ []
+      | Bool   -> bool true
+      | Char   -> char 'a'
+
+    let label = function
+      | Float  -> "float"
+      | Int    -> "int"
+      | String -> "string"
+      | Null   -> "null"
+      | Array  -> "array"
+      | Object -> "object"
+      | Bool   -> "bool"
+      | Char   -> "char"
+
+    let throws decode types =
+      let test t =
+        let label = label t ^ " exception not raised" in
+        match ignore (decode (value t)) with
+        | exception Decode_error _ -> assert_true ~label true
+        | _                        -> assert_true ~label false
+      in
+      List.iter test types
+  end
 
   let test_id () = assert_equal ~label:"id" 0 (int (Decode.id (Encode.int 0)))
 
@@ -438,7 +546,7 @@ module Decode = struct
     assert_equal ~label:"object -> int" None
     @@ (try_optional int) (Encode.object_ []);
 
-    assert_equal ~label:"boolean -> boolean " (Some true)
+    assert_equal ~label:"boolean -> boolean" (Some true)
     @@ try_optional bool (Encode.bool true);
     assert_equal ~label:"float -> float" (Some 1.23)
     @@ try_optional float (Encode.float 1.23);
@@ -596,6 +704,13 @@ module Decode = struct
          ]
 end
 
-let suite = "Jsonoo" >::: [ "test_stringify" >:: test_stringify; Decode.suite ]
+let suite =
+  "Jsonoo"
+  >::: [ "test_stringify" >:: test_stringify
+       ; "test_try_parse_opt" >:: test_try_parse_opt
+       ; "test_try_parse_exn" >:: test_try_parse_exn
+       ; TestEncode.suite
+       ; TestDecode.suite
+       ]
 
 let () = Webtest_js.Runner.run suite
