@@ -2,12 +2,16 @@ open Js_of_ocaml
 
 type t = private < > Js.t
 
+exception Decode_error of string
+
+val try_parse_opt : string -> t option
+
+val try_parse_exn : string -> t
+
 val stringify : t -> string
 
 module Decode : sig
   type 'a decoder = t -> 'a
-
-  exception Decode_error of string
 
   val id : t decoder
 
@@ -23,11 +27,7 @@ module Decode : sig
 
   val char : char decoder
 
-  val date : Js.date Js.t decoder
-
-  val nullable : 'a decoder -> 'a Js.opt decoder
-
-  val with_default : 'a -> 'a decoder -> 'a decoder
+  val nullable : 'a decoder -> 'a option decoder
 
   val array : 'a decoder -> 'a array decoder
 
@@ -52,9 +52,11 @@ module Decode : sig
 
   val at : string list -> 'a decoder -> 'a decoder
 
-  val optional : 'a decoder -> 'a option decoder
+  val try_optional : 'a decoder -> 'a option decoder
 
-  val one_of : 'a decoder list -> 'a decoder
+  val try_default : 'a -> 'a decoder -> 'a decoder
+
+  val any : 'a decoder list -> 'a decoder
 
   val either : 'a decoder -> 'a decoder -> 'a decoder
 
@@ -66,7 +68,7 @@ end
 module Encode : sig
   type 'a encoder = 'a -> t
 
-  exception Encode_error of string
+  val id : t encoder
 
   val null : t
 
@@ -80,11 +82,7 @@ module Encode : sig
 
   val char : char encoder
 
-  val data : Js.date Js.t encoder
-
   val nullable : 'a encoder -> 'a option encoder
-
-  val with_default : 'a encoder -> 'a option encoder
 
   val dict : 'a encoder -> (string, 'a) Hashtbl.t encoder
 

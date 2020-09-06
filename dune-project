@@ -21,7 +21,6 @@
  (depends
   js_of_ocaml
   gen_js_api
-  gen_js_api
   (webtest :with-test)
   (webtest-js :with-test)
   (conf-npm :with-test)))

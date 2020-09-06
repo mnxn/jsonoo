@@ -2,21 +2,33 @@ open Js_of_ocaml
 
 type t = < > Js.t
 
+exception Decode_error of string
+
+let decode_error message = raise (Decode_error message)
+
 let stringify (json : t) =
-  json
-  |> Js.Unsafe.inject
-  |> Js.Unsafe.global##._JSON##stringify
-  |> Js.to_string
+  Js.to_string (Js.Unsafe.global##._JSON##stringify json)
+
+let try_parse_opt s =
+  try Some (Js.Unsafe.global##._JSON##parse (Js.string s)) with
+  | _ -> None
+
+let try_parse_exn s =
+  try Js.Unsafe.global##._JSON##parse (Js.string s) with
+  | _ -> decode_error ("Failed to parse JSON string \"" ^ s ^ "\"")
 
 module Decode = struct
   type 'a decoder = t -> 'a
 
-  exception Decode_error of string
-
-  let decode_error message = raise (Decode_error message)
-
   let expected typ (json : t) =
     decode_error ("Expected " ^ typ ^ ", got " ^ stringify json)
+
+  let expected_length length array =
+    decode_error
+      ( "Expected array of length "
+      ^ string_of_int length
+      ^ ", got array of length "
+      ^ string_of_int (Array.length array) )
 
   let typeof value = Js.to_string (Js.typeof value)
 
@@ -28,9 +40,9 @@ module Decode = struct
 
   let null (json : t) =
     if Js.Opt.test (Js.Opt.return json) then
-      Js.null
-    else
       expected "null" json
+    else
+      Js.null
 
   let bool (json : t) =
     if typeof json = "boolean" then
@@ -64,19 +76,11 @@ module Decode = struct
     else
       expected "single-character string" json
 
-  let date (json : t) : Js.date Js.t =
-    let date_constr = Js.Unsafe.global##._Date in
-    new%js date_constr (string json)
-
   let nullable decode (json : t) =
     if Js.Opt.test (Js.Opt.return json) then
-      Js.null
+      Some (decode json)
     else
-      Js.Opt.return (decode json)
-
-  let with_default default decode (json : t) =
-    try decode json with
-    | Decode_error _ -> default
+      None
 
   let array decode (json : t) =
     if is_array json then
@@ -104,7 +108,7 @@ module Decode = struct
       let b = tuple_element decode_b array 1 in
       (a, b)
     else
-      expected "array of length 2" json
+      expected_length 2 array
 
   let tuple2 = pair
 
@@ -116,7 +120,7 @@ module Decode = struct
       let c = tuple_element decode_c array 2 in
       (a, b, c)
     else
-      expected "array of length 3" json
+      expected_length 3 array
 
   let tuple4 decode_a decode_b decode_c decode_d (json : t) =
     let array = array id json in
@@ -127,12 +131,13 @@ module Decode = struct
       let d = tuple_element decode_d array 3 in
       (a, b, c, d)
     else
-      expected "array of length 4" json
+      expected_length 4 array
 
   let object_field decode js_object key =
     try decode (Js.Unsafe.get js_object key) with
     | Decode_error message ->
-      decode_error (message ^ "\n\tin object field '" ^ Js.to_string key ^ "'")
+      decode_error
+        (message ^ "\n\tin object at field '" ^ Js.to_string key ^ "'")
 
   let dict decode (json : t) =
     if
@@ -172,11 +177,15 @@ module Decode = struct
     | []            ->
       invalid_arg "Expected key_path to contain at least one element"
 
-  let optional decode (json : t) =
+  let try_optional decode (json : t) =
     try Some (decode json) with
     | Decode_error _ -> None
 
-  let one_of decoders (json : t) =
+  let try_default value decode (json : t) =
+    try decode json with
+    | Decode_error _ -> value
+
+  let any decoders (json : t) =
     let rec inner errors = function
       | []             ->
         let rev_errors = List.rev errors in
@@ -189,7 +198,7 @@ module Decode = struct
     in
     inner [] decoders
 
-  let either a b = one_of [ a; b ]
+  let either a b = any [ a; b ]
 
   let map f decode (json : t) = f (decode json)
 
@@ -199,7 +208,7 @@ end
 module Encode = struct
   type 'a encoder = 'a -> t
 
-  exception Encode_error of string
+  let id (json : t) = json
 
   let null : t = Obj.magic Js.null
 
@@ -213,13 +222,7 @@ module Encode = struct
 
   let char c : t = string (String.make 1 c)
 
-  let data (d : Js.date Js.t) : t = Js.Unsafe.coerce (d##toJSON Js.undefined)
-
   let nullable encode = function
-    | None   -> null
-    | Some v -> encode v
-
-  let with_default encode = function
     | None   -> null
     | Some v -> encode v
 
