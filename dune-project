@@ -19,7 +19,10 @@
  (name jsonoo)
  (synopsis "JSON library for Js_of_ocaml")
  (depends
+  (ocaml
+   (>= 4.08))
   js_of_ocaml
+  js_of_ocaml-ppx
   gen_js_api
   (webtest :with-test)
   (webtest-js :with-test)
