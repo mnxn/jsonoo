@@ -4,14 +4,15 @@ type t = private < > Js.t
 
 exception Decode_error of string
 
-val stringify : t -> string
-(** Use [JSON.stringify] to turn JSON into a string *)
-
 val try_parse_opt : string -> t option
 (** Try to parse the string into JSON, return [Some] if successful, [None] otherwise *)
 
 val try_parse_exn : string -> t
 (** Try to parse the string into JSON, raise [Decode_error] if it fails *)
+
+val stringify : ?spaces:int -> t -> string
+(** Use [JSON.stringify] to turn JSON into a string.
+    Specify [spaces] to control the indentation size. *)
 
 module Decode : sig
   type 'a decoder = t -> 'a

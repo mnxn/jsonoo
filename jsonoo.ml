@@ -6,16 +6,25 @@ exception Decode_error of string
 
 let decode_error message = raise (Decode_error message)
 
-let stringify (json : t) =
-  Js.to_string (Js.Unsafe.global##._JSON##stringify json)
+let _JSON = Js.Unsafe.global##._JSON
 
 let try_parse_opt s =
-  try Some (Js.Unsafe.global##._JSON##parse (Js.string s)) with
+  try Some (_JSON##parse (Js.string s)) with
   | _ -> None
 
 let try_parse_exn s =
-  try Js.Unsafe.global##._JSON##parse (Js.string s) with
+  try _JSON##parse (Js.string s) with
   | _ -> decode_error ("Failed to parse JSON string \"" ^ s ^ "\"")
+
+let stringify ?spaces (json : t) =
+  let js_string =
+    match spaces with
+    | None   -> _JSON##stringify json
+    | Some n ->
+      let spaces = Js.number_of_float (float_of_int n) in
+      _JSON##stringify json Js.undefined spaces
+  in
+  Js.to_string js_string
 
 module Decode = struct
   type 'a decoder = t -> 'a

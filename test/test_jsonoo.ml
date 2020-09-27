@@ -4,9 +4,6 @@ open Jsonoo
 
 let equal x y = Jsonoo.stringify x = Jsonoo.stringify y
 
-let test_stringify () =
-  assert_equal ~label:"null" "null" @@ Jsonoo.stringify Encode.null
-
 let test_try_parse_opt () =
   assert_equal ~label:"some" (Some (Encode.int 1))
   @@ Jsonoo.try_parse_opt {| 1 |};
@@ -19,6 +16,14 @@ let test_try_parse_exn () =
     ~label:"exception"
     (Decode_error "Failed to parse JSON string \" [ \"")
     (fun () -> ignore @@ Jsonoo.try_parse_exn {| [ |})
+
+let test_stringify () =
+  assert_equal ~label:"null" "null" @@ Jsonoo.stringify Encode.null
+
+let test_stringify_spaces () =
+  assert_equal ~label:"stringify spaces" "{\n  \"x\": 1\n}"
+  @@ Jsonoo.stringify ~spaces:2
+  @@ Jsonoo.try_parse_exn {| {"x":1} |}
 
 module TestEncode = struct
   open Jsonoo.Encode
@@ -706,9 +711,10 @@ end
 
 let suite =
   "Jsonoo"
-  >::: [ "test_stringify" >:: test_stringify
-       ; "test_try_parse_opt" >:: test_try_parse_opt
+  >::: [ "test_try_parse_opt" >:: test_try_parse_opt
        ; "test_try_parse_exn" >:: test_try_parse_exn
+       ; "test_stringify" >:: test_stringify
+       ; "test_stringify_spaces" >:: test_stringify_spaces
        ; TestEncode.suite
        ; TestDecode.suite
        ]
