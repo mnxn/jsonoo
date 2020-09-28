@@ -8,7 +8,7 @@ val try_parse_opt : string -> t option
 (** Try to parse the string into JSON, return [Some] if successful, [None] otherwise *)
 
 val try_parse_exn : string -> t
-(** Try to parse the string into JSON, raise [Decode_error] if it fails *)
+(** Try to parse the string into JSON, raise {!Decode_error} if it fails *)
 
 val stringify : ?spaces:int -> t -> string
 (** Use [JSON.stringify] to turn JSON into a string.
