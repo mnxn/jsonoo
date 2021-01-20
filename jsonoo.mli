@@ -1,6 +1,6 @@
-open Js_of_ocaml
+type json
 
-type t = private < > Js.t
+type t = json Js_of_ocaml.Js.t
 
 exception Decode_error of string
 
@@ -23,7 +23,7 @@ module Decode : sig
   val id : t decoder
   (** Identity decoder returns its argument unchanged *)
 
-  val null : 'a Js.opt decoder
+  val null : 'a Js_of_ocaml.Js.opt decoder
   (** Only decode a JSON [null] *)
 
   val bool : bool decoder

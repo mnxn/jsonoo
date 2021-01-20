@@ -1,6 +1,8 @@
 open Js_of_ocaml
 
-type t = < > Js.t
+type json
+
+type t = json Js.t
 
 exception Decode_error of string
 
