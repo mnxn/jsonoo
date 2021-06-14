@@ -4,6 +4,7 @@
 
 -   Use `json Js.t` type for compatibility with Js_of_ocaml bindings.
 -   Change internal representation to `Ojs.t` and make `Jsonoo.t` abstract.
+-   Add a `Make` functor to create modules with a custom type representation.
 
 ## 0.2.1
 
