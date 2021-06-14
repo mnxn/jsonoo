@@ -1,5 +1,4 @@
 open Webtest.Suite
-open Js_of_ocaml
 open Jsonoo
 
 let equal x y = Jsonoo.stringify x = Jsonoo.stringify y
@@ -31,11 +30,10 @@ module TestEncode = struct
   let test_id () = assert_equal ~label:"id" ~equal null @@ id null
 
   let test_null () =
-    assert_equal ~label:"null" ~equal (Obj.magic Js.null : t) @@ null
+    assert_equal ~label:"null" ~equal (try_parse_exn {| null |}) @@ null
 
   let test_bool () =
-    assert_equal ~label:"bool" ~equal (Obj.magic (Js.bool true) : t)
-    @@ bool true
+    assert_equal ~label:"bool" ~equal (try_parse_exn {| true |}) @@ bool true
 
   let test_float () =
     assert_equal ~label:"float" ~equal (try_parse_exn {| 1.23 |}) @@ float 1.23
@@ -174,7 +172,7 @@ module TestDecode = struct
 
   let test_id () = assert_equal ~label:"id" 0 (int (Decode.id (Encode.int 0)))
 
-  let test_null () = assert_equal ~label:"null" Js.null @@ null Encode.null
+  let test_null () = assert_equal ~label:"null" Ojs.null @@ null Encode.null
 
   let test_bool () =
     assert_equal ~label:"true" true @@ bool (Encode.bool true);
@@ -192,7 +190,7 @@ module TestDecode = struct
       ~label:"infinity"
       (Decode_error "Expected integer, got null")
       (fun () ->
-        let i : Jsonoo.t = Js.Unsafe.get Js.Unsafe.global "Infinity" in
+        let i = Jsonoo.t_of_js (Ojs.variable "Infinity") in
         let (_ : int) = int i in
         ());
     Test.throws int Test.[ Bool; Float; String; Null; Array; Object; Char ]
@@ -699,7 +697,7 @@ module TestDecode = struct
          ; "test_dict" >:: test_dict
          ; "test_field" >:: test_field
          ; "test_at" >:: test_at
-         ; "test_optional" >:: test_try_optional
+         ; "test_try_optional" >:: test_try_optional
          ; "test_try_default" >:: test_try_default
          ; "test_any" >:: test_any
          ; "test_either" >:: test_either

@@ -1,7 +1,13 @@
 (library
  (public_name jsonoo)
  (name jsonoo)
- (libraries js_of_ocaml gen_js_api)
+ (libraries ojs)
  (preprocess
-  (pps js_of_ocaml-ppx))
+  (pps gen_js_api.ppx))
  (modes byte))
+
+(rule
+ (targets internal.ml)
+ (deps internal.mli)
+ (action
+  (run %{bin:gen_js_api} %{deps})))

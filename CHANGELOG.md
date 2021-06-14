@@ -2,7 +2,8 @@
 
 ## Unreleased
 
--   Use `json Js.t` type for compatibility with Js_of_ocaml bindings
+-   Use `json Js.t` type for compatibility with Js_of_ocaml bindings.
+-   Change internal representation to `Ojs.t` and make `Jsonoo.t` abstract.
 
 ## 0.2.1
 

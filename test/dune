@@ -1,6 +1,6 @@
 (executable
  (name test_jsonoo)
- (libraries jsonoo js_of_ocaml webtest webtest-js)
+ (libraries jsonoo ojs webtest webtest-js)
  (modes js))
 
 (rule
