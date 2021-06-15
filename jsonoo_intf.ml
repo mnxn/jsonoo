@@ -154,3 +154,12 @@ module type S = sig
     (** Encode the pairs of keys and values as a JSON dict *)
   end
 end
+
+module type Jsonoo = sig
+  include S
+  (** @inline *)
+
+  module type S = S
+
+  module Make (T : Ojs.T) : S with type t = T.t
+end

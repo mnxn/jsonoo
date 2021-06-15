@@ -1,4 +1,6 @@
-module Make (T : Ojs.T) = struct
+include Jsonoo_intf
+
+module Make (T : Ojs.T) : S with type t = T.t = struct
   include T
 
   let to_internal t = [%js.to: Internal.Json.t] @@ [%js.of: t] t
