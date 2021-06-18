@@ -2,8 +2,8 @@ module Array : sig
   val isArray : 'a -> bool [@@js.global]
 end [@js.scope "Array"]
 
-module Json : sig
-  type t = private Ojs.t
+module Json (T : Ojs.T) : sig
+  type t = T.t
 
   val t_of_js : Ojs.t -> t
 

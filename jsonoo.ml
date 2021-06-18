@@ -1,27 +1,23 @@
 include Jsonoo_intf
 
 module Make (T : Ojs.T) : S with type t = T.t = struct
-  include T
+  module J = Internal.Json (T)
 
-  let to_internal t = [%js.to: Internal.Json.t] @@ [%js.of: t] t
-
-  let of_internal t = [%js.to: t] @@ [%js.of: Internal.Json.t] t
+  type t = J.t [@@js]
 
   exception Decode_error of string
 
   let decode_error message = raise (Decode_error message)
 
   let try_parse_opt s =
-    try Some (of_internal @@ Internal.Json.parse s) with
+    try Some (J.parse s) with
     | _ -> None
 
   let try_parse_exn s =
-    try of_internal @@ Internal.Json.parse s with
+    try J.parse s with
     | _ -> decode_error ("Failed to parse JSON string \"" ^ s ^ "\"")
 
-  let stringify ?spaces t =
-    let internal = to_internal t in
-    Internal.Json.stringify internal ?spaces ()
+  let stringify ?spaces t = J.stringify t ?spaces ()
 
   module Decode = struct
     type 'a decoder = t -> 'a
@@ -268,4 +264,6 @@ module Make (T : Ojs.T) : S with type t = T.t = struct
   end
 end
 
-include Make (Internal.Json)
+include Make (struct
+  type t = Ojs.t [@@js]
+end)
